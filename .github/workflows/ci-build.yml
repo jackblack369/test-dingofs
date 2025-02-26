@@ -47,12 +47,13 @@ jobs:
         if [ "${{ github.event_name }}" == "pull_request" ]; then
           echo "pull_request" > event.txt
         elif [ "${{ github.event_name }}" == "push" ]; then
-          echo "github.ref is ${{ github.ref }}"
+          echo "event type is push, github.ref is ${{ github.ref }}"
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             echo "tag" > event.txt
             tagInfo=echo "${{ github.ref }}" | sed 's/refs\/tags\///'
             echo "$tagInfo" > tag_name.txt
             echo "TAG_NAME=$tagInfo" >> $GITHUB_ENV
+            echo "change event type to tag, tag info is: $tagInfo"
           else
             echo "push" > event.txt
             echo "TAG_NAME=latest" >> $GITHUB_ENV

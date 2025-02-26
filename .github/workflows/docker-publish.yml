@@ -90,7 +90,7 @@ jobs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: dingodatabase/dingofs
+        images: jackblack369/test
         tags: |
           type=raw,enable=${{ env.EVENT == 'tag' }},value=${{ env.TAG_NAME }}
           type=raw,value=latest,enable={{is_default_branch}}

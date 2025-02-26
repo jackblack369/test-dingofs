@@ -100,7 +100,7 @@ jobs:
       if: steps.check-event.outputs.continue == 'true'
       uses: docker/build-push-action@v6
       with:
-        context: ./docker/rocky9
-        file: ./docker/rocky9/Dockerfile
+        context: ./docker/test
+        file: ./docker/test/Dockerfile
         push: true
         tags: ${{ steps.meta.outputs.tags }}

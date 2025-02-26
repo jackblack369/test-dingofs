@@ -49,8 +49,10 @@ jobs:
     - name: Config push tag env
       if: ${{ env.EVENT == 'tag' }}
       run: |
+        echo "check tag_name.txt is existed or not"
         if [ -f tag_name.txt ]; then
           echo "TAG_NAME=$(cat tag_name.txt)" >> $GITHUB_ENV
+          echo " tage is: ${{ env.TAG_NAME }}"
         fi
     
     - name: Print env info

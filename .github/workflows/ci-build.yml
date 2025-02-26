@@ -47,6 +47,7 @@ jobs:
         if [ "${{ github.event_name }}" == "pull_request" ]; then
           echo "pull_request" > event.txt
         elif [ "${{ github.event_name }}" == "push" ]; then
+          echo "github.ref is ${{ github.ref }}"
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             echo "tag" > event.txt
             tagInfo=echo "${{ github.ref }}" | sed 's/refs\/tags\///'

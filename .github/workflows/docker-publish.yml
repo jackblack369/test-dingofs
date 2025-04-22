@@ -15,6 +15,20 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Download branch name file
+      uses: actions/download-artifact@v4
+      with:
+        name: branch_name
+        run-id: ${{ github.event.workflow_run.id }}
+        github-token: ${{ secrets.GH_TOKEN }}
+        path: ./
+
+    - name: Config trigger branch env
+      run: |
+        if [ -f branch_name.txt ]; then
+          echo "BRANCH_NAME=$(cat branch_name.txt)" >> $GITHUB_ENV
+        fi
+
     - name: Download event type file
       uses: actions/download-artifact@v4
       with:
@@ -67,6 +81,9 @@ jobs:
         if [ -n "${{ env.TAG_NAME }}" ]; then
           echo "tag name is ${{ env.TAG_NAME }}, need to publish image."
         fi
+        if [ -n "${{ env.BRANCH_NAME }}" ]; then
+          echo "branch name is ${{ env.BRANCH_NAME }}, need to publish image."
+        fi
 
     - name: List directory contents after download
       if: steps.check-event.outputs.continue == 'true'
@@ -95,9 +112,9 @@ jobs:
         images: jackblack369/test
         tags: |
           type=raw,enable=${{ env.EVENT == 'tag' }},value=${{ env.TAG_NAME }}
-          type=raw,value=latest,enable=${{github.ref == 'refs/heads/main' && env.EVENT != 'tag'}}
-          type=sha,prefix=,format=short,enable=${{ env.EVENT != 'tag' && github.ref_name == 'main' }}
-          type=sha,prefix=${{ github.ref_name }}-,format=short,enable=${{ env.EVENT != 'tag' && github.ref_name != 'main' }}
+          type=raw,value=latest,enable=${{ env.BRANCH_NAME == 'main' && env.EVENT != 'tag'}}
+          type=sha,prefix=,format=short,enable=${{ env.EVENT != 'tag' && env.BRANCH_NAME == 'main' }}
+          type=sha,prefix=${{ env.BRANCH_NAME }}-,format=short,enable=${{ env.EVENT != 'tag' && env.BRANCH_NAME != 'main' }}
 
     - name: Build and push
       if: steps.check-event.outputs.continue == 'true'

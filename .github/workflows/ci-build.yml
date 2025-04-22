@@ -43,6 +43,11 @@ jobs:
 
     - name: Record event type
       run: |
+        
+        branchName=$(echo "${{ github.ref_name }}")
+        echo "branch name is: $branchName"
+        echo "$branchName" > branch_name.txt
+
         echo "hello dingofs" > event.txt
         if [ "${{ github.event_name }}" == "pull_request" ]; then
           echo "pull_request" > event.txt
@@ -73,6 +78,13 @@ jobs:
       with:
         name: tag_name
         path: tag_name.txt
+        compression-level: 0
+
+    - name: Save branch name info
+      uses: actions/upload-artifact@v4
+      with:
+        name: branch_name
+        path: branch_name.txt
         compression-level: 0
 
     #- name: Set Safe Dir

@@ -95,7 +95,7 @@ jobs:
         images: jackblack369/test
         tags: |
           type=raw,enable=${{ env.EVENT == 'tag' }},value=${{ env.TAG_NAME }}
-          type=raw,value=latest,enable={{is_default_branch}}
+          type=raw,value=latest,enable=${{github.ref == 'refs/heads/main' && env.EVENT != 'tag'}}
           type=sha,prefix=,format=long
 
     - name: Build and push

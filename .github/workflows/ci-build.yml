@@ -14,7 +14,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    #container: dingodatabase/dingo-eureka:rocyky9
+    #container: dingodatabase/dingo-eureka:rocky9
     container: rockylinux/rockylinux:9.3
 
     steps:
@@ -47,6 +47,11 @@ jobs:
         branchName=$(echo "${{ github.ref_name }}")
         echo "branch name is: $branchName"
         echo "$branchName" > branch_name.txt
+
+        commitId="${{ github.sha }}"
+        shortCommitId=${commitId:0:7}
+        echo "commit id is: $shortCommitId"
+        echo "$shortCommitId" > commit_id.txt
 
         echo "hello dingofs" > event.txt
         if [ "${{ github.event_name }}" == "pull_request" ]; then
@@ -85,6 +90,13 @@ jobs:
       with:
         name: branch_name
         path: branch_name.txt
+        compression-level: 0
+
+    - name: Save commit id info
+      uses: actions/upload-artifact@v4
+      with:
+        name: commit_id
+        path: commit_id.txt
         compression-level: 0
 
     #- name: Set Safe Dir

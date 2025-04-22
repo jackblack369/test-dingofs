@@ -96,8 +96,9 @@ jobs:
         tags: |
           type=raw,enable=${{ env.EVENT == 'tag' }},value=${{ env.TAG_NAME }}
           type=raw,value=latest,enable=${{github.ref == 'refs/heads/main' && env.EVENT != 'tag'}}
-          type=sha,prefix=${{ github.ref_name != 'main' && github.ref_name || '' }}-,format=short,enable=${{env.EVENT != 'tag'}}
-
+          type=sha,format=short,enable=${{ env.EVENT != 'tag' && github.ref_name == 'main' }}
+          type=sha,prefix=${{ github.ref_name }}-,format=short,enable=${{ env.EVENT != 'tag' && github.ref_name != 'main' }}
+          
     - name: Build and push
       if: steps.check-event.outputs.continue == 'true'
       uses: docker/build-push-action@v6

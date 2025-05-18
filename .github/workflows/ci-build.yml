@@ -20,6 +20,21 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Check disk size
+      run: |
+        echo "Disk size init:"
+        df -h
+
+    - name: Remove .git directory
+      run: |
+        echo "Remove .git directory"
+        rm -rf .git
+
+    - name: Check disk size
+      run: |
+        echo "Disk size after remove git:"
+        df -h
+
     - name: Config dingo-sdk env
       run: |
         echo "DINGOSDK_INSTALL_PATH=/root/.local/dingo-sdk" >> $GITHUB_ENV
@@ -112,9 +127,27 @@ jobs:
     #  run: |
     #    make file_deploy_config 
 
+    - name: Test Random generate file
+      run: |
+        dd if=/dev/urandom of=randomfile bs=1M count=10
+
     - name: Archive the dingofs directory
       run: |
-        tar -czvf dingofs.tar.gz test
+        tar -czvf dingofs.tar.gz randomfile
+
+    - name: Check disk size
+      run: |
+        echo "Disk size after build:"
+        df -h
+
+    - name: Remove /root/.local/dingo-eureka
+      run: |
+        rm -rf /root/.local/dingo-sdk
+
+    - name: Check disk size
+      run: |
+        echo "Disk size after remove eureka:"
+        df -h
 
     - name: Copy artifactory to another workflow
       uses: actions/upload-artifact@v4

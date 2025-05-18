@@ -15,6 +15,52 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Check disk size
+      run: |
+        echo "Disk size init:"
+        df -h
+
+    - name: Remove .git directory
+      run: |
+        echo "Remove .git directory"
+        rm -rf .git
+
+    - name: Check current username
+      run: |
+        echo "Current username:"
+        whoami
+        echo "Current group:"
+        groups
+        echo "Current directory:" 
+        pwd
+
+    - name: Check docker root directory
+      run: |
+        echo "Docker root directory:"
+        docker info | grep "Docker Root Dir"
+        echo "check /var/lib/docker/"
+        if [ -d /var/lib/docker ]; then
+          echo "/var/lib/docker/ is existed, ls /var/lib/docker/"
+          sudo ls -la /var/lib/docker/
+        else
+          echo "/var/lib/docker/ is not existed"
+        fi
+
+    - name: Configure Docker data-root
+      run: |
+        sudo systemctl stop docker
+        sudo systemctl stop docker.socket
+        sudo mkdir -p /mnt/docker
+        echo '{ "data-root": "/mnt/docker" }' | sudo tee /etc/docker/daemon.json
+        if [ -d /var/lib/docker ]; then
+          sudo mv /var/lib/docker /mnt/docker || true
+        fi
+        sudo systemctl start docker.socket
+        sudo systemctl start docker
+        docker info | grep "Docker Root Dir"
+        echo "check /mnt/docker/"
+        sudo ls -la /mnt/docker
+
     - name: Download branch name file
       uses: actions/download-artifact@v4
       with:
@@ -106,9 +152,19 @@ jobs:
       if: steps.check-event.outputs.continue == 'true'
       run: ls -la
 
+    - name: Check disk size before download
+      run: |
+        echo "Disk size before download:"
+        df -h
+
     - name: Extract artifact
       if: steps.check-event.outputs.continue == 'true'
       run: tar -xzvf dingofs.tar.gz -C docker/rocky9
+
+    - name: Check disk size after download
+      run: |
+        echo "Disk size after download:"
+        df -h
 
     - name: Set up Docker Buildx
       if: steps.check-event.outputs.continue == 'true'

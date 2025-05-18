@@ -14,11 +14,16 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    #container: dingodatabase/dingo-eureka:rocky9
-    container: rockylinux/rockylinux:9.3
+    container: dingodatabase/dingo-eureka:rocky9-fs
+    #container: rockylinux/rockylinux:9.3
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: check disk size
+      run: |
+        df -h
+        echo "Disk size check complete"
 
     - name: Config dingo-sdk env
       run: |
@@ -28,18 +33,6 @@ jobs:
       run: |
         echo "THIRD_PARTY_INSTALL_PATH: $THIRD_PARTY_INSTALL_PATH"
         echo "DINGOSDK_INSTALL_PATH: $DINGOSDK_INSTALL_PATH"
-
-    #- name: Checkout dingo-sdk
-    #  run: |
-    #    git clone https://github.com/dingodb/dingo-sdk.git /tmp/dingo-sdk
-
-    #- name: Build dingo-sdk
-    #  run: |
-    #    cd /tmp/dingo-sdk
-    #    git submodule sync --recursive
-    #    git submodule update --init --recursive
-    #    mkdir build && cd build && cmake -DTHIRD_PARTY_INSTALL_PATH=/root/.local/dingo-eureka -DCMAKE_INSTALL_PREFIX=/root/.local/dingo-sdk ..
-    #    make -j $(nproc)
 
     - name: Record event type
       run: |

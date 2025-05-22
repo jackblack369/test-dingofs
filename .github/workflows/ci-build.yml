@@ -14,8 +14,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    #container: dingodatabase/dingo-eureka:rocky9
-    container: rockylinux/rockylinux:9.3
+    #container: rockylinux/rockylinux:9.3
+    #container: dingodatabase/dingo-eureka:rocky9-fs
 
     steps:
     - uses: actions/checkout@v4
@@ -25,40 +25,63 @@ jobs:
         echo "Disk size init:"
         df -h
 
-    - name: Remove .git directory
+    - name: Check which sudo
       run: |
-        echo "Remove .git directory"
-        rm -rf .git
+        echo "Check which sudo:"
+        which sudo
 
-    - name: Check disk size
+    - name: Check current dir sub dir disk size
       run: |
-        echo "Disk size after remove git:"
-        df -h
+        echo "Check current dir sub dir disk size:"
+        du -h --max-depth=1
 
-    - name: Config dingo-sdk env
+    - name: Configure Docker data-root
       run: |
-        echo "DINGOSDK_INSTALL_PATH=/root/.local/dingo-sdk" >> $GITHUB_ENV
+        sudo systemctl stop docker
+        sudo systemctl stop docker.socket
+        sudo mkdir -p /mnt/docker
+        echo '{ "data-root": "/mnt/docker" }' | sudo tee /etc/docker/daemon.json
+        if [ -d /var/lib/docker ]; then
+          sudo mv /var/lib/docker /mnt/docker || true
+        fi
+        sudo systemctl start docker.socket
+        sudo systemctl start docker
+        docker info | grep "Docker Root Dir"
 
-    - name: Check environment
+    - name: Pull dingodatabase/dingo-eureka:rocky9-fs
       run: |
-        echo "THIRD_PARTY_INSTALL_PATH: $THIRD_PARTY_INSTALL_PATH"
-        echo "DINGOSDK_INSTALL_PATH: $DINGOSDK_INSTALL_PATH"
+        docker pull dingodatabase/dingo-eureka:rocky9-fs
 
-    #- name: Checkout dingo-sdk
-    #  run: |
-    #    git clone https://github.com/dingodb/dingo-sdk.git /tmp/dingo-sdk
+    - name: Init build script
+      run: |
+        cat <<EOF > build.sh
+        #!/bin/bash
+        set -x
 
-    #- name: Build dingo-sdk
-    #  run: |
-    #    cd /tmp/dingo-sdk
-    #    git submodule sync --recursive
-    #    git submodule update --init --recursive
-    #    mkdir build && cd build && cmake -DTHIRD_PARTY_INSTALL_PATH=/root/.local/dingo-eureka -DCMAKE_INSTALL_PREFIX=/root/.local/dingo-sdk ..
-    #    make -j $(nproc)
+        SOURCE_PATH=/opt/dingofs/
+
+        cd ${SOURCE_PATH}
+        ls
+        git config --global --add safe.directory /opt/dingofs
+
+        make file_dep
+        make file_build only=//src/* release=1
+        make file_deploy_config
+
+        if [ $? -ne 0 ]
+        then
+            echo "build failed"
+            exit -1
+        fi
+
+        tar -czvf dingofs.tar.gz -C docker/rocky9 dingofs
+
+        echo "DingoFS Build finished"
+        EOF
+        chmod +x build.sh
 
     - name: Record event type
       run: |
-        
         branchName=$(echo "${{ github.ref_name }}")
         echo "branch name is: $branchName"
         echo "$branchName" > branch_name.txt
@@ -72,19 +95,51 @@ jobs:
         if [ "${{ github.event_name }}" == "pull_request" ]; then
           echo "pull_request" > event.txt
         elif [ "${{ github.event_name }}" == "push" ]; then
-          echo "event type is push, github.ref is ${{ github.ref }}"
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             echo "tag" > event.txt
             tagInfo=$(echo "${{ github.ref }}" | sed 's/refs\/tags\///')
             echo "$tagInfo" > tag_name.txt
             echo "TAG_NAME=$tagInfo" >> $GITHUB_ENV
-            echo "change event type to tag, tag info is: $tagInfo"
           else
             echo "push" > event.txt
             echo "TAG_NAME=latest" >> $GITHUB_ENV
           fi
         fi
     
+    - name: Save event type info
+      uses: actions/upload-artifact@v4
+      with:
+        name: event
+        path: event.txt
+        compression-level: 0
+    
+    - name: Save tag name info
+      if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: tag_name
+        path: tag_name.txt
+        compression-level: 0
+    
+    - name: Save branch name info
+      uses: actions/upload-artifact@v4
+      with:
+        name: branch_name
+        path: branch_name.txt
+        compression-level: 0
+
+    - name: Save commit id info
+      uses: actions/upload-artifact@v4
+      with:
+        name: commit_id
+        path: commit_id.txt
+        compression-level: 0
+
+    - name: Build DingoFS
+      run: |
+        echo "Build DingoFS"
+        docker run --name release-dingofs --rm -v /home/runner/work/dingofs/dingofs:/opt/dingofs/ dingodatabase/dingo-eureka:rocky9-fs /opt/dingofs/build.sh
+
     - name: Save event type info
       uses: actions/upload-artifact@v4
       with:
@@ -114,40 +169,27 @@ jobs:
         path: commit_id.txt
         compression-level: 0
 
-    #- name: Set Safe Dir
-    #  run: git config --global --add safe.directory $PWD
-
-    #- name: Build dependencies
-    #  run: make file_dep
- 
-    #- name: Build dingofs
-    #  run: make file_build only=//src/* release=1
-
-    #- name: Install dingofs
+    #- name: Test Random generate file
     #  run: |
-    #    make file_deploy_config 
+    #    dd if=/dev/urandom of=randomfile bs=1M count=10
 
-    - name: Test Random generate file
-      run: |
-        dd if=/dev/urandom of=randomfile bs=1M count=10
+    #- name: Archive the dingofs directory
+    #  run: |
+    #    tar -czvf dingofs.tar.gz randomfile
 
-    - name: Archive the dingofs directory
-      run: |
-        tar -czvf dingofs.tar.gz randomfile
+    #- name: Check disk size
+    #  run: |
+    #    echo "Disk size after build:"
+    #    df -h
 
-    - name: Check disk size
-      run: |
-        echo "Disk size after build:"
-        df -h
+    #- name: Remove /root/.local/dingo-eureka
+    #  run: |
+    #    rm -rf /root/.local/dingo-sdk
 
-    - name: Remove /root/.local/dingo-eureka
-      run: |
-        rm -rf /root/.local/dingo-sdk
-
-    - name: Check disk size
-      run: |
-        echo "Disk size after remove eureka:"
-        df -h
+    #- name: Check disk size
+    #  run: |
+    #    echo "Disk size after remove eureka:"
+    #    df -h
 
     - name: Copy artifactory to another workflow
       uses: actions/upload-artifact@v4

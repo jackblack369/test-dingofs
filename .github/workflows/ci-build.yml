@@ -29,11 +29,23 @@ jobs:
       run: |
         echo "Check which sudo:"
         which sudo
+        echo "Current path:"
+        pwd
+        echo "Current files:"
+        ls
 
     - name: Check current dir sub dir disk size
       run: |
         echo "Check current dir sub dir disk size:"
         du -h --max-depth=1
+
+    - name: Copy dingofs repository
+      run: |
+        echo "Move dingofs repository"
+        sudo cp -r /home/runner/work/test-dingofs/test-dingofs /mnt/
+        echo "Check /mnt/test-dingofs"
+        ls -l /mnt/test-dingofs
+        sudo chown $USER:$USER /mnt/test-dingofs
 
     - name: Configure Docker data-root
       run: |
@@ -54,31 +66,29 @@ jobs:
 
     - name: Init build script
       run: |
-        cat <<EOF > build.sh
+        cat <<EOF > /mnt/test-dingofs/build.sh
         #!/bin/bash
         set -x
 
-        SOURCE_PATH=/opt/dingofs/
-
-        cd ${SOURCE_PATH}
+        cd /opt/dingofs/
         ls
         git config --global --add safe.directory /opt/dingofs
 
-        make file_dep
-        make file_build only=//src/* release=1
-        make file_deploy_config
+        # make file_dep
+        # make file_build only=//src/* release=1
+        # make file_deploy_config
 
         if [ $? -ne 0 ]
         then
             echo "build failed"
             exit -1
         fi
-
+        (mkdir -p docker/rocky9/dingofs && cd docker/rocky9/dingofs && dd if=/dev/urandom of=randomfile bs=1M count=10)
         tar -czvf dingofs.tar.gz -C docker/rocky9 dingofs
 
         echo "DingoFS Build finished"
         EOF
-        chmod +x build.sh
+        chmod +x /mnt/test-dingofs/build.sh
 
     - name: Record event type
       run: |
@@ -138,36 +148,8 @@ jobs:
     - name: Build DingoFS
       run: |
         echo "Build DingoFS"
-        docker run --name release-dingofs --rm -v /home/runner/work/dingofs/dingofs:/opt/dingofs/ dingodatabase/dingo-eureka:rocky9-fs /opt/dingofs/build.sh
+        docker run --name release-dingofs --rm -v /mnt/test-dingofs:/opt/dingofs/ dingodatabase/dingo-eureka:rocky9-fs /opt/dingofs/build.sh
 
-    - name: Save event type info
-      uses: actions/upload-artifact@v4
-      with:
-        name: event
-        path: event.txt
-        compression-level: 0
-    
-    - name: Save tag name info
-      if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: tag_name
-        path: tag_name.txt
-        compression-level: 0
-
-    - name: Save branch name info
-      uses: actions/upload-artifact@v4
-      with:
-        name: branch_name
-        path: branch_name.txt
-        compression-level: 0
-
-    - name: Save commit id info
-      uses: actions/upload-artifact@v4
-      with:
-        name: commit_id
-        path: commit_id.txt
-        compression-level: 0
 
     #- name: Test Random generate file
     #  run: |
@@ -195,7 +177,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
           name: dingofs
-          path: ./dingofs.tar.gz
+          path: /mnt/test-dignofs/dingofs.tar.gz
           compression-level: 0
 
     - name: Release

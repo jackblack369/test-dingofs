@@ -60,10 +60,10 @@ jobs:
         sudo systemctl start docker
         docker info | grep "Docker Root Dir"
 
-    - name: Pull dingodatabase/dingo-eureka:rocky9-fs
+    - name: Pull dingodatabase/dingo-base:rocky9
       run: |
-        docker pull dingodatabase/dingo-eureka:rocky9-fs
-
+        docker pull dingodatabase/dingo-base:rocky9
+    
     - name: Init build script
       run: |
         cat <<EOF > /mnt/test-dingofs/build.sh
@@ -168,16 +168,18 @@ jobs:
     #  run: |
     #    rm -rf /root/.local/dingo-sdk
 
-    #- name: Check disk size
-    #  run: |
-    #    echo "Disk size after remove eureka:"
-    #    df -h
+    - name: Check dingofs repos file
+      run: |
+        echo "Check dingofs repo files:"
+        ls -l /mnt/test-dingofs
+        echo "Check dingofs repo files in docker/rocky9:"
+        ls -l /mnt/test-dingofs/docker/rocky9
 
     - name: Copy artifactory to another workflow
       uses: actions/upload-artifact@v4
       with:
           name: dingofs
-          path: /mnt/test-dignofs/dingofs.tar.gz
+          path: /mnt/test-dingofs/dingofs.tar.gz
           compression-level: 0
 
     - name: Release
